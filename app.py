@@ -1,19 +1,23 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import openai, os, requests
 from bs4 import BeautifulSoup
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
 
-# .env dosyasını yükle (lokal testler için)
+# Ortam değişkenlerini yükle
 load_dotenv()
 
-# Flask app
+# Flask uygulaması
 app = Flask(__name__)
 
-# OpenAI API key
+# Sadece batuhandurmaz.com'dan gelen istekleri kabul et
+CORS(app, origins=["https://www.batuhandurmaz.com"])
+
+# OpenAI API anahtarı
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# HTML'den metin çıkart
+# HTML'den metin ayıklama
 def extract_text(url):
     try:
         res = requests.get(url, timeout=10)
@@ -24,12 +28,12 @@ def extract_text(url):
     except Exception as e:
         return ""
 
-# Metni embedding'e çevir
+# Embedding oluştur
 def get_embedding(text):
     res = openai.embeddings.create(input=[text], model="text-embedding-ada-002")
     return res.data[0].embedding
 
-# İçerik boşluğu tespiti
+# İçerik boşluğu analizi
 def suggest_gap(my_text, comp_text):
     prompt = f"""
 Benim İçeriğim:
@@ -61,13 +65,21 @@ def seo_analyze():
             comp_embedding = get_embedding(comp_text)
             sim = cosine_similarity([my_embedding], [comp_embedding])[0][0]
             suggestion = suggest_gap(my_text, comp_text) if sim < 0.85 else ""
-            results.append({"url": url, "similarity": round(sim, 3), "suggestion": suggestion})
+            results.append({
+                "url": url,
+                "similarity": round(sim, 3),
+                "suggestion": suggestion
+            })
         except Exception as e:
-            results.append({"url": url, "similarity": "Hata", "suggestion": str(e)})
+            results.append({
+                "url": url,
+                "similarity": "Hata",
+                "suggestion": str(e)
+            })
 
     return jsonify(results)
 
-# Railway'de dış bağlantıya izin ver (port ayarlanabilir olmalı!)
+# Railway port ayarı (host: 0.0.0.0, port: dinamik)
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
