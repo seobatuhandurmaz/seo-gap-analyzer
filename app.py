@@ -4,11 +4,16 @@ from bs4 import BeautifulSoup
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
 
+# .env dosyasını yükle (lokal testler için)
 load_dotenv()
+
+# Flask app
 app = Flask(__name__)
 
+# OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# HTML'den metin çıkart
 def extract_text(url):
     try:
         res = requests.get(url, timeout=10)
@@ -19,10 +24,12 @@ def extract_text(url):
     except Exception as e:
         return ""
 
+# Metni embedding'e çevir
 def get_embedding(text):
     res = openai.embeddings.create(input=[text], model="text-embedding-ada-002")
     return res.data[0].embedding
 
+# İçerik boşluğu tespiti
 def suggest_gap(my_text, comp_text):
     prompt = f"""
 Benim İçeriğim:
@@ -40,6 +47,7 @@ SEO açısından hangi boşlukları kapatmalıyım?
     )
     return res.choices[0].message.content
 
+# API endpoint
 @app.route("/api/seo-analyze", methods=["POST"])
 def seo_analyze():
     data = request.json
@@ -59,5 +67,7 @@ def seo_analyze():
 
     return jsonify(results)
 
+# Railway'de dış bağlantıya izin ver (port ayarlanabilir olmalı!)
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
