@@ -33,17 +33,21 @@ def get_embedding(text):
     res = openai.embeddings.create(input=[text], model="text-embedding-ada-002")
     return res.data[0].embedding
 
-# İçerik boşluğu analizi
-def suggest_gap(my_text, comp_text):
+# İçerik boşluğu analizi + anahtar kelime odaklı değerlendirme
+def suggest_gap(my_text, comp_text, keyword):
     prompt = f"""
+Hedef Anahtar Kelime: {keyword}
+
 Benim İçeriğim:
 {my_text[:3000]}
 
 Rakip İçerik:
 {comp_text[:3000]}
 
-Eksik başlıklar, açıklamalar veya örnekler nelerdir?
-SEO açısından hangi boşlukları kapatmalıyım?
+Yukarıdaki içerikleri karşılaştır.
+- Özellikle hedef anahtar kelimeye göre içerik kalitesini değerlendir.
+- Benim içeriğimde eksik olan ama rakibin içeriğinde bulunan başlıklar, açıklamalar veya detayları listele.
+- SEO açısından hangi boşlukları kapatmalıyım?
 """
     res = openai.chat.completions.create(
         model="gpt-4",
@@ -55,6 +59,7 @@ SEO açısından hangi boşlukları kapatmalıyım?
 @app.route("/api/seo-analyze", methods=["POST"])
 def seo_analyze():
     data = request.json
+    keyword = data.get("keyword", "")
     my_text = extract_text(data["my_url"])
     my_embedding = get_embedding(my_text)
 
@@ -64,7 +69,7 @@ def seo_analyze():
             comp_text = extract_text(url)
             comp_embedding = get_embedding(comp_text)
             sim = cosine_similarity([my_embedding], [comp_embedding])[0][0]
-            suggestion = suggest_gap(my_text, comp_text) if sim < 0.85 else ""
+            suggestion = suggest_gap(my_text, comp_text, keyword) if sim < 0.85 else ""
             results.append({
                 "url": url,
                 "similarity": round(sim, 3),
