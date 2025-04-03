@@ -11,7 +11,7 @@ load_dotenv()
 # Flask uygulaması
 app = Flask(__name__)
 
-# Sadece batuhandurmaz.com'dan gelen istekleri kabul et
+# CORS ayarı
 CORS(app, origins=["https://www.batuhandurmaz.com"])
 
 # OpenAI API anahtarı
@@ -55,6 +55,28 @@ Yukarıdaki içerikleri karşılaştır.
     )
     return res.choices[0].message.content
 
+# Anahtar kelime genişletme önerileri
+def keyword_expansion(keyword):
+    prompt = f"""
+Sen bir SEO uzmanısın. Aşağıdaki anahtar kelimeye göre 3 kategoriye ayrılmış öneriler üret:
+
+1. N-gram Önerileri (2-3 kelimelik kombinasyonlar)
+2. Autocomplete Tahminleri (kullanıcı yazarken çıkan öneriler gibi)
+3. Entity Önerileri (markalar, konular, kişiler, araçlar vs.)
+
+Anahtar Kelime: "{keyword}"
+
+Her başlık altında madde madde öneri ver.
+"""
+    try:
+        res = openai.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return res.choices[0].message.content
+    except Exception as e:
+        return f"Keyword genişletme alınamadı: {str(e)}"
+
 # API endpoint
 @app.route("/api/seo-analyze", methods=["POST"])
 def seo_analyze():
@@ -82,9 +104,15 @@ def seo_analyze():
                 "suggestion": str(e)
             })
 
-    return jsonify(results)
+    # ✅ Anahtar kelimeye göre GPT ile n-gram, entity, autocomplete önerileri
+    keyword_suggestions = keyword_expansion(keyword)
 
-# Railway port ayarı (host: 0.0.0.0, port: dinamik)
+    return jsonify({
+        "analysis": results,
+        "keyword_expansion": keyword_suggestions
+    })
+
+# Railway port ayarı
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
