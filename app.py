@@ -91,7 +91,7 @@ def seo_analyze():
             comp_text = extract_text(url)
             comp_embedding = get_embedding(comp_text)
             sim = cosine_similarity([my_embedding], [comp_embedding])[0][0]
-            suggestion = suggest_gap(my_text, comp_text, keyword) if sim < 0.85 else ""
+            suggestion = suggest_gap(my_text, comp_text, keyword) if sim < 0.95 else ""
             results.append({
                 "url": url,
                 "similarity": round(sim, 3),
